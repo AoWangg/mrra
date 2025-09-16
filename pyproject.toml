@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mrra"
-version = "0.1.0"
+version = "0.1.1"
 description = "Mobility Retrieve-and-Reflect Agent: GraphRAG + Multi-Agent Reflection for mobility trajectories"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -33,6 +33,8 @@ dependencies = [
   # LangChain split packages; keep core + openai compatible client
   "langchain-core>=0.2.26",
   "langchain-openai>=0.2.0",
+  # HTTP client with SOCKS proxy support
+  "httpx[socks]>=0.24.0",
 ]
 
 [project.urls]

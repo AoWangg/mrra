@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2025-09-17
+
+### Fixed
+- Added `httpx[socks]` dependency to fix SOCKS proxy support for network requests
+- Resolved ImportError when using SOCKS proxy configurations
+
 ### Added
 - Initial open-source release preparation
 - MIT license adoption
