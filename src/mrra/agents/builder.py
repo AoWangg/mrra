@@ -27,7 +27,9 @@ def build_mrra_agent(llm: Dict[str, Any], retriever: Any, reflection: Dict[str, 
         "aggregator": str
     }
     """
-    logger.info(f"building MRRA agent with model={llm.get('model')} provider={llm.get('provider')}")
+    logger.info(
+        f"building MRRA agent with model={llm.get('model')} provider={llm.get('provider')}"
+    )
     llm_obj = make_llm(**llm)
     subagents: Dict[str, Any] = {}
     for sa in reflection.get("subAgents", []):
@@ -45,7 +47,9 @@ def build_mrra_agent(llm: Dict[str, Any], retriever: Any, reflection: Dict[str, 
                 logger = logging.getLogger("mrra.builder")
                 logger.warning(f"failed to init gmap MCP tools: {e}")
         logger.info(f"add subagent name={sa['name']} tools={len(tools)}")
-        subagents[sa["name"]] = build_subagent(sa["name"], llm_obj, sa.get("prompt"), tools)
+        subagents[sa["name"]] = build_subagent(
+            sa["name"], llm_obj, sa.get("prompt"), tools
+        )
 
     return ReflectionOrchestrator(
         subagents=subagents,

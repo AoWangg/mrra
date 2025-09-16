@@ -9,9 +9,11 @@ except Exception:  # pragma: no cover
     try:
         from langchain.tools import tool  # type: ignore
     except Exception:  # fallback shim
+
         def tool(_name=None, return_direct=False):  # type: ignore
             def deco(fn):
                 return fn
+
             return deco
 
 
@@ -33,4 +35,3 @@ def weather_tool(location: str, when: str) -> Dict[str, Any]:
     # TODO: Connect to MCP server if configured. For now, return mock data.
     # You can enable MCP via environment variables and implement an adapter here.
     return _mock_weather(location, when)
-

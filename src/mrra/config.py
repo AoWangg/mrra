@@ -37,4 +37,3 @@ class MRRAConfig:
     llm: LLMConfig = field(default_factory=LLMConfig)
     retriever: RetrieverConfig = field(default_factory=RetrieverConfig)
     mcp: MCPConfig = field(default_factory=MCPConfig)
-

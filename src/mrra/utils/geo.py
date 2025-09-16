@@ -54,15 +54,16 @@ def bearing(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return (math.degrees(math.atan2(y, x)) + 360) % 360
 
 
-def moving_average(points: List[Tuple[float, float]], window: int = 3) -> List[Tuple[float, float]]:
+def moving_average(
+    points: List[Tuple[float, float]], window: int = 3
+) -> List[Tuple[float, float]]:
     if window <= 1 or len(points) <= 2:
         return points
     res: List[Tuple[float, float]] = []
     for i in range(len(points)):
-        l = max(0, i - window + 1)
-        chunk = points[l : i + 1]
+        left_idx = max(0, i - window + 1)
+        chunk = points[left_idx : i + 1]
         lat = sum(p[0] for p in chunk) / len(chunk)
         lon = sum(p[1] for p in chunk) / len(chunk)
         res.append((lat, lon))
     return res
-

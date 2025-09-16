@@ -26,19 +26,23 @@ class ReflectionOrchestrator(Runnable):
     max_round: int = 3
     aggregator: str = "confidence_weighted_voting"
 
-    def _compose_query(self, inputs: Dict[str, Any], state: Dict[str, Any]) -> Dict[str, Any]:
+    def _compose_query(
+        self, inputs: Dict[str, Any], state: Dict[str, Any]
+    ) -> Dict[str, Any]:
         evid = [d.metadata for d in state.get("evidence", [])]
         # Build options from evidence docs
         options = []
         for m in evid:
-            options.append({
-                "id": m.get("node"),
-                "score": m.get("score"),
-                "lat": m.get("lat"),
-                "lon": m.get("lon"),
-                "grid": m.get("grid"),
-                "top_succ": m.get("top_succ", []),
-            })
+            options.append(
+                {
+                    "id": m.get("node"),
+                    "score": m.get("score"),
+                    "lat": m.get("lat"),
+                    "lon": m.get("lon"),
+                    "grid": m.get("grid"),
+                    "top_succ": m.get("top_succ", []),
+                }
+            )
         return {
             "task": inputs.get("task", "next_position"),
             "options": options,
@@ -79,7 +83,9 @@ class ReflectionOrchestrator(Runnable):
         if task == "full_day_traj":
             if path_ids:
                 best_idx = max(range(len(path_ids)), key=lambda i: path_weights[i])
-                coords: List[List[float]] = [id2coord[pid] for pid in path_ids[best_idx] if pid in id2coord]
+                coords: List[List[float]] = [
+                    id2coord[pid] for pid in path_ids[best_idx] if pid in id2coord
+                ]
                 if coords:
                     return {
                         "result": {"type": "path", "value": coords},
@@ -101,6 +107,7 @@ class ReflectionOrchestrator(Runnable):
             }
         # vote
         from collections import defaultdict
+
         agg_scores: Dict[str, float] = defaultdict(float)
         for sid, w in zip(selections, sel_weights):
             agg_scores[sid] += w
@@ -121,10 +128,16 @@ class ReflectionOrchestrator(Runnable):
         return {
             "result": {"type": "point", "value": res_point},
             "confidence": float(agg_scores[best_id]),
-            "details": {"per_agent": per_agent, "evidence_used": evid, "selected_id": best_id},
+            "details": {
+                "per_agent": per_agent,
+                "evidence_used": evid,
+                "selected_id": best_id,
+            },
         }
 
-    def invoke(self, inputs: Dict[str, Any], config: Any | None = None) -> Dict[str, Any]:
+    def invoke(
+        self, inputs: Dict[str, Any], config: Any | None = None
+    ) -> Dict[str, Any]:
         logger = logging.getLogger("mrra.reflection")
         # 1) retrieve evidence
         # Prefer modern retriever.invoke(); keep legacy fallback for compatibility
@@ -134,14 +147,18 @@ class ReflectionOrchestrator(Runnable):
             evidence = self.retriever.get_relevant_documents(inputs)
 
         state: Dict[str, Any] = {"evidence": evidence, "history": []}
-        logger.debug(f"orchestrator evidence count={len(evidence) if isinstance(evidence, list) else 'n/a'}")
+        logger.debug(
+            f"orchestrator evidence count={len(evidence) if isinstance(evidence, list) else 'n/a'}"
+        )
         # 2) reflection rounds
         for _ in range(int(self.max_round)):
             outs: Dict[str, Any] = {}
             for name, agent in self.subagents.items():
                 # 不做兜底：若 LLM/子智能体错误（如无效密钥），直接抛出异常
                 outs[name] = agent(self._compose_query(inputs, state))
-                logger.debug(f"orchestrator subagent[{name}] output keys={list(outs[name].keys()) if isinstance(outs[name], dict) else type(outs[name])}")
+                logger.debug(
+                    f"orchestrator subagent[{name}] output keys={list(outs[name].keys()) if isinstance(outs[name], dict) else type(outs[name])}"
+                )
             state["history"].append(outs)
         # 3) aggregate
         logger.debug("orchestrator aggregating results")

@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import math
 import pandas as pd
 
 from mrra.data.trajectory import TrajectoryBatch
@@ -12,7 +11,19 @@ from mrra.data.activity import ActivityRecord
 
 
 DEFAULT_PURPOSE_CATEGORIES: Tuple[str, ...] = (
-    "居住", "工作", "上学", "用餐", "购物", "医疗", "娱乐", "锻炼", "社交", "接送", "旅游", "通勤中转", "其他",
+    "居住",
+    "工作",
+    "上学",
+    "用餐",
+    "购物",
+    "医疗",
+    "娱乐",
+    "锻炼",
+    "社交",
+    "接送",
+    "旅游",
+    "通勤中转",
+    "其他",
 )
 
 
@@ -49,10 +60,15 @@ class ActivityPurposeAssigner:
 
         # 若有 LLM，采用并发细化；无 LLM 则直接落地启发式
         if self.llm is not None and self.concurrency > 1:
-            def _worker(idx_ar: Tuple[int, ActivityRecord]) -> Tuple[int, Optional[str]]:
+
+            def _worker(
+                idx_ar: Tuple[int, ActivityRecord],
+            ) -> Tuple[int, Optional[str]]:
                 idx, act = idx_ar
                 try:
-                    return idx, self._llm_purpose(act, place_stats.get(act.place_id), draft=heuristics[idx])
+                    return idx, self._llm_purpose(
+                        act, place_stats.get(act.place_id), draft=heuristics[idx]
+                    )
                 except Exception:
                     return idx, None
 
@@ -61,7 +77,9 @@ class ActivityPurposeAssigner:
                 futures = [ex.submit(_worker, (i, ar)) for i, ar in enumerate(acts)]
                 for fut in as_completed(futures):
                     try:
-                        idx, pv = fut.result(timeout=self.llm_timeout if self.llm_timeout else None)
+                        idx, pv = fut.result(
+                            timeout=self.llm_timeout if self.llm_timeout else None
+                        )
                         if pv:
                             heuristics[idx] = pv
                     except Exception:
@@ -72,7 +90,9 @@ class ActivityPurposeAssigner:
             # 单线程调用 LLM（保底）
             for i, ar in enumerate(acts):
                 try:
-                    pv = self._llm_purpose(ar, place_stats.get(ar.place_id), draft=heuristics[i])
+                    pv = self._llm_purpose(
+                        ar, place_stats.get(ar.place_id), draft=heuristics[i]
+                    )
                     if pv:
                         heuristics[i] = pv
                 except Exception:
@@ -86,15 +106,20 @@ class ActivityPurposeAssigner:
     # ------------------------
     # Aggregations
     # ------------------------
-    def _aggregate_place_stats(self, acts: List[ActivityRecord]) -> Dict[str, Dict[str, Any]]:
+    def _aggregate_place_stats(
+        self, acts: List[ActivityRecord]
+    ) -> Dict[str, Dict[str, Any]]:
         stats: Dict[str, Dict[str, Any]] = {}
         for ar in acts:
-            s = stats.setdefault(ar.place_id, {
-                "total_duration": 0.0,
-                "visits": 0,
-                "hours": {h: 0.0 for h in range(24)},
-                "dows": {d: 0.0 for d in range(7)},
-            })
+            s = stats.setdefault(
+                ar.place_id,
+                {
+                    "total_duration": 0.0,
+                    "visits": 0,
+                    "hours": {h: 0.0 for h in range(24)},
+                    "dows": {d: 0.0 for d in range(7)},
+                },
+            )
             s["total_duration"] += float(ar.duration_min)
             s["visits"] += 1
             h = int(ar.start.hour)
@@ -106,7 +131,9 @@ class ActivityPurposeAssigner:
     # ------------------------
     # Heuristics
     # ------------------------
-    def _heuristic_purpose(self, ar: ActivityRecord, s: Optional[Dict[str, Any]]) -> str:
+    def _heuristic_purpose(
+        self, ar: ActivityRecord, s: Optional[Dict[str, Any]]
+    ) -> str:
         dur = float(ar.duration_min)
         h = int(ar.start.hour)
         dow = int(ar.start.dayofweek)
@@ -136,7 +163,13 @@ class ActivityPurposeAssigner:
             return "购物" if t <= 20 else "娱乐"
 
         # 医疗：工作日白天短中停留（20-120 分钟）且不频繁（场所访问次数低）
-        if s is not None and s.get("visits", 0) <= 2 and dow in (0, 1, 2, 3, 4) and 9 <= h <= 17 and 20 <= dur <= 120:
+        if (
+            s is not None
+            and s.get("visits", 0) <= 2
+            and dow in (0, 1, 2, 3, 4)
+            and 9 <= h <= 17
+            and 20 <= dur <= 120
+        ):
             return "医疗"
 
         # 锻炼：清晨/傍晚 30-120 分钟
@@ -156,7 +189,9 @@ class ActivityPurposeAssigner:
     # ------------------------
     # LLM
     # ------------------------
-    def _llm_purpose(self, ar: ActivityRecord, s: Optional[Dict[str, Any]], draft: Optional[str]) -> Optional[str]:
+    def _llm_purpose(
+        self, ar: ActivityRecord, s: Optional[Dict[str, Any]], draft: Optional[str]
+    ) -> Optional[str]:
         """使用 LLM 进行细化分类。输入中文提示，要求从限定类别中选择并返回 JSON。"""
         llm = self.llm
         if llm is None:
@@ -181,14 +216,12 @@ class ActivityPurposeAssigner:
                 "visits": int(s.get("visits", 0)),
             }
 
-        system = (
-            "你是出行行为分析助手。只返回一个 JSON 对象，无其它文本。"
-        )
+        system = "你是出行行为分析助手。只返回一个 JSON 对象，无其它文本。"
         human = (
             "请根据以下活动信息，判定其‘活动目的’：\n"
             f"允许的类别：{categories}\n"
             "尽量从这些类别中二选一或一选一，无法判断用‘其他’。\n"
-            "返回 JSON：{\"purpose\":类别,\"confidence\":0-1,\"reason\":中文简述}。\n"
+            '返回 JSON：{"purpose":类别,"confidence":0-1,"reason":中文简述}。\n'
             f"活动：{place_json}\n"
             f"若你倾向于：{draft or '未知'}，可在不确定时参考。"
         )
@@ -199,7 +232,11 @@ class ActivityPurposeAssigner:
                 # 优先按 LangChain ChatModel 走消息列表；失败则退化为直接传字符串
                 try:
                     from langchain_core.messages import SystemMessage, HumanMessage  # type: ignore
-                    messages = [SystemMessage(content=system), HumanMessage(content=human)]
+
+                    messages = [
+                        SystemMessage(content=system),
+                        HumanMessage(content=human),
+                    ]
                     msg = llm.invoke(messages)
                 except Exception:
                     msg = llm.invoke(human)
@@ -211,7 +248,9 @@ class ActivityPurposeAssigner:
         except Exception:
             return None
 
-        import json, re
+        import json
+        import re
+
         m = re.search(r"\{[\s\S]*\}", content)
         if not m:
             return None

@@ -11,6 +11,7 @@ try:
         StdioConnection,
     )  # type: ignore
     from langchain_mcp_adapters.tools import load_mcp_tools  # type: ignore
+
     HAVE_ADAPTERS = True
 except Exception:  # pragma: no cover
     HAVE_ADAPTERS = False
@@ -55,7 +56,9 @@ def _tools_via_langchain_mcp(url: str) -> List[Any]:
 def _sync_call_sse(url: str, tool_name: str, args: Dict[str, Any]) -> str:
     """Call a remote MCP tool over SSE synchronously and return text content."""
     if ClientSession is None or SseClientTransport is None:
-        raise RuntimeError("mcp library not installed; please `pip install mcp langchain-mcp`")
+        raise RuntimeError(
+            "mcp library not installed; please `pip install mcp langchain-mcp`"
+        )
 
     async def _run() -> str:
         transport = await SseClientTransport.connect(url)

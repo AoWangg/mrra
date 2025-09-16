@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Dict, Any, TYPE_CHECKING
 
 import pandas as pd
+
+if TYPE_CHECKING:
+    from mrra.data.trajectory import TrajectoryBatch
 
 
 @dataclass
 class PatternGenerate:
-    tb: "TrajectoryBatch"
+    tb: TrajectoryBatch
 
     def long_short_patterns(self, user_id: str) -> Dict[str, Any]:
         """Compute simple long/short-term patterns and basic profile.
@@ -31,7 +34,11 @@ class PatternGenerate:
             if sdf.empty:
                 return None
             # use approximate lat/lon rounding for a cell signature
-            cell = (sdf["latitude"].round(3).astype(str) + "," + sdf["longitude"].round(3).astype(str))
+            cell = (
+                sdf["latitude"].round(3).astype(str)
+                + ","
+                + sdf["longitude"].round(3).astype(str)
+            )
             return cell.value_counts().idxmax()
 
         home = top_cell(night)
@@ -41,7 +48,7 @@ class PatternGenerate:
         recent = df.tail(10)
         short = []
         for i in range(1, len(recent)):
-            a = f"({recent.iloc[i-1]['latitude']:.3f},{recent.iloc[i-1]['longitude']:.3f})"
+            a = f"({recent.iloc[i - 1]['latitude']:.3f},{recent.iloc[i - 1]['longitude']:.3f})"
             b = f"({recent.iloc[i]['latitude']:.3f},{recent.iloc[i]['longitude']:.3f})"
             if a != b:
                 short.append(f"最近从 {a} 迁移到 {b}")
@@ -59,4 +66,3 @@ class PatternGenerate:
 
         profile = {"home": home, "work": work}
         return {"long": long, "short": short[-5:], "profile": profile}
-

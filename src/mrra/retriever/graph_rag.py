@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -8,6 +9,7 @@ try:
     from langchain_core.retrievers import BaseRetriever
     from langchain_core.documents import Document
 except Exception:  # fallback for environments w/o langchain installed
+
     class BaseRetriever:  # type: ignore
         def invoke(self, *_args, **_kwargs):  # pragma: no cover - lightweight fallback
             raise ImportError("langchain-core is required for GraphRAGGenerate")
@@ -16,6 +18,7 @@ except Exception:  # fallback for environments w/o langchain installed
     class Document:  # type: ignore
         page_content: str
         metadata: Dict[str, Any]
+
 
 from mrra.graph.mobility_graph import MobilityGraph
 from mrra.data.trajectory import TrajectoryBatch
@@ -50,15 +53,22 @@ class GraphRAGGenerate(BaseRetriever):
 
     @model_validator(mode="after")
     def _ensure_graph(self):  # type: ignore
-        if getattr(self, "mobility_graph", None) is None and getattr(self, "tb", None) is not None:
+        if (
+            getattr(self, "mobility_graph", None) is None
+            and getattr(self, "tb", None) is not None
+        ):
             object.__setattr__(self, "mobility_graph", MobilityGraph(self.tb))
         return self
 
     # LangChain will call this under the hood
-    def _get_relevant_documents(self, query: Dict[str, Any], *, run_manager=None) -> List[Document]:
+    def _get_relevant_documents(
+        self, query: Dict[str, Any], *, run_manager=None
+    ) -> List[Document]:
         return self._retrieve(query)
 
-    async def _aget_relevant_documents(self, query: Dict[str, Any], *, run_manager=None) -> List[Document]:
+    async def _aget_relevant_documents(
+        self, query: Dict[str, Any], *, run_manager=None
+    ) -> List[Document]:
         return self._retrieve(query)
 
     # Allow direct programmatic usage
@@ -74,7 +84,11 @@ class GraphRAGGenerate(BaseRetriever):
         from pandas import to_datetime
 
         t = to_datetime(query.get("t")) if query.get("t") is not None else None
-        hour = int(t.tz_convert("UTC").hour if getattr(t, "tzinfo", None) else t.hour) if t is not None else None
+        hour = (
+            int(t.tz_convert("UTC").hour if getattr(t, "tzinfo", None) else t.hour)
+            if t is not None
+            else None
+        )
         dow = int(t.dayofweek) if t is not None else None
 
         # seed nodes
@@ -130,10 +144,16 @@ class GraphRAGGenerate(BaseRetriever):
             # approximate to nearest loc node signature used by graph builder
             from mrra.utils.geo import to_grid
 
-            gy, gx = to_grid(float(last.latitude), float(last.longitude), self.mobility_graph.cfg.grid_size_m)  # type: ignore
+            gy, gx = to_grid(
+                float(last.latitude),
+                float(last.longitude),
+                self.mobility_graph.cfg.grid_size_m,
+            )  # type: ignore
             last_node = f"g_{gy}_{gx}"
             if last_node in G:
-                loc_scores[last_node] = loc_scores.get(last_node, 0.0) + 1.0 * self.recent_weight
+                loc_scores[last_node] = (
+                    loc_scores.get(last_node, 0.0) + 1.0 * self.recent_weight
+                )
 
         if not loc_scores:
             return []
@@ -151,8 +171,16 @@ class GraphRAGGenerate(BaseRetriever):
             node_data = G.nodes[n]
             # decode approximate lat/lon center from grid id by sampling connected edges to hours/dow is optional
             # We don't store exact lat/lon for grid nodes; embed grid indices in metadata
-            gy = int(node_data.get("gy", n.split("_")[1])) if "gy" in node_data else int(n.split("_")[1])
-            gx = int(node_data.get("gx", n.split("_")[2])) if "gx" in node_data else int(n.split("_")[2])
+            gy = (
+                int(node_data.get("gy", n.split("_")[1]))
+                if "gy" in node_data
+                else int(n.split("_")[1])
+            )
+            gx = (
+                int(node_data.get("gx", n.split("_")[2]))
+                if "gx" in node_data
+                else int(n.split("_")[2])
+            )
             # approximate lat/lon center for the grid cell (assumes 200m grid)
             grid_m = float(self.mobility_graph.cfg.grid_size_m)  # type: ignore
             m_per_deg_lat = 111_132.0

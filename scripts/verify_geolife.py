@@ -2,7 +2,7 @@ import os
 import json
 import logging
 from datetime import datetime
-from typing import List, Tuple
+from typing import List
 
 import pandas as pd
 
@@ -38,12 +38,14 @@ def load_geolife_plt(path: str, user_id: str) -> pd.DataFrame:
                 dt = datetime.strptime(parts[5] + " " + parts[6], "%Y-%m-%d %H:%M:%S")
             except Exception:
                 continue
-            rows.append({
-                "user_id": user_id,
-                "timestamp": dt.isoformat(),
-                "latitude": lat,
-                "longitude": lon,
-            })
+            rows.append(
+                {
+                    "user_id": user_id,
+                    "timestamp": dt.isoformat(),
+                    "latitude": lat,
+                    "longitude": lon,
+                }
+            )
     return pd.DataFrame(rows)
 
 
@@ -83,26 +85,33 @@ def main():
     def load_env_file(path: str) -> None:
         if not os.path.isfile(path):
             return
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, "r", encoding="utf-8") as f:
             for line in f:
                 s = line.strip()
-                if not s or s.startswith('#'):
+                if not s or s.startswith("#"):
                     continue
-                if '=' not in s:
+                if "=" not in s:
                     continue
-                k, v = s.split('=', 1)
+                k, v = s.split("=", 1)
                 k = k.strip()
                 v = v.strip().strip('"').strip("'")
                 os.environ[k] = v
 
-    load_env_file(os.path.join('scripts', '.env'))
+    load_env_file(os.path.join("scripts", ".env"))
 
-    api_key = os.environ.get('MRRA_API_KEY') or os.environ.get('OPENAI_API_KEY') or os.environ.get('DASHSCOPE_API_KEY') or ''
-    provider = os.environ.get('MRRA_API_PROVIDER', 'openai-compatible')
-    model = os.environ.get('MRRA_API_MODEL', 'qwen-plus')
-    base_url = os.environ.get('MRRA_API_BASE_URL', 'https://dashscope.aliyuncs.com/compatible-mode/v1')
+    api_key = (
+        os.environ.get("MRRA_API_KEY")
+        or os.environ.get("OPENAI_API_KEY")
+        or os.environ.get("DASHSCOPE_API_KEY")
+        or ""
+    )
+    provider = os.environ.get("MRRA_API_PROVIDER", "openai-compatible")
+    model = os.environ.get("MRRA_API_MODEL", "qwen-plus")
+    base_url = os.environ.get(
+        "MRRA_API_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    )
     try:
-        temperature = float(os.environ.get('MRRA_API_TEMPERATURE', '0.2'))
+        temperature = float(os.environ.get("MRRA_API_TEMPERATURE", "0.2"))
     except Exception:
         temperature = 0.2
 
@@ -120,7 +129,9 @@ def main():
             llm_obj = make_llm(**llm_cfg)
         except Exception:
             llm_obj = None
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(levelname)s %(name)s: %(message)s"
+    )
     base_dir = os.path.join("scripts", "Data")
     # Choose target user folder
     target_user = os.environ.get("GEOLIFE_USER")
@@ -130,10 +141,14 @@ def main():
     if target_user is None:
         target_user = users[0]
     elif target_user not in users:
-        raise ValueError(f"GEOLIFE_USER={target_user} not found under {base_dir}. Available: {users[:10]}...")
+        raise ValueError(
+            f"GEOLIFE_USER={target_user} not found under {base_dir}. Available: {users[:10]}..."
+        )
 
     df = load_geolife_user(base_dir, target_user)
-    print(f"Loaded PLT rows: {len(df)} users: {df['user_id'].nunique()} user: {target_user}")
+    print(
+        f"Loaded PLT rows: {len(df)} users: {df['user_id'].nunique()} user: {target_user}"
+    )
     print("Preview:")
     print(df.head(8).to_string(index=False))
 
@@ -142,7 +157,13 @@ def main():
     tb_hash = compute_tb_hash(tb)
 
     # 提取活动并缓存
-    ext_cfg = dict(method="radius", radius_m=300, min_dwell_minutes=30, max_gap_minutes=90, grid_size_m=200)
+    ext_cfg = dict(
+        method="radius",
+        radius_m=300,
+        min_dwell_minutes=30,
+        max_gap_minutes=90,
+        grid_size_m=200,
+    )
     llm_flag = "1" if llm_obj else "0"
     acts_key = (
         f"r{ext_cfg['radius_m']}_min{ext_cfg['min_dwell_minutes']}"
@@ -156,34 +177,39 @@ def main():
         cm.save_activities(tb_hash, acts_key, acts)
     print(f"Extracted activities: {len(acts)} (first 5)")
     for a in acts[:5]:
-        print(f" - {a.activity_type}/{a.purpose}@{a.place_id} {a.start}~{a.end} ({a.duration_min:.1f}m)")
+        print(
+            f" - {a.activity_type}/{a.purpose}@{a.place_id} {a.start}~{a.end} ({a.duration_min:.1f}m)"
+        )
     # 生成并缓存“活动链”（按用户时间排序的相邻活动转移）
-    chains_key = f"chains_{abs(hash(acts_key))% (10**8)}"
+    chains_key = f"chains_{abs(hash(acts_key)) % (10**8)}"
     chains = cm.load_json(tb_hash, chains_key, kind="chains")
     if chains is None:
         from collections import defaultdict
+
         user_groups = defaultdict(list)
         for a in sorted(acts, key=lambda r: (r.user_id, r.start)):
             user_groups[a.user_id].append(a)
         chain_records = []
         for uid, seq in user_groups.items():
             for i in range(1, len(seq)):
-                prev, cur = seq[i-1], seq[i]
-                chain_records.append({
-                    "user_id": uid,
-                    "from_place": prev.place_id,
-                    "to_place": cur.place_id,
-                    "from_purpose": getattr(prev, "purpose", "其他"),
-                    "to_purpose": getattr(cur, "purpose", "其他"),
-                    "at": str(cur.start),
-                })
+                prev, cur = seq[i - 1], seq[i]
+                chain_records.append(
+                    {
+                        "user_id": uid,
+                        "from_place": prev.place_id,
+                        "to_place": cur.place_id,
+                        "from_purpose": getattr(prev, "purpose", "其他"),
+                        "to_purpose": getattr(cur, "purpose", "其他"),
+                        "at": str(cur.start),
+                    }
+                )
         chains = {"count": len(chain_records), "records": chain_records[:1000]}
         cm.save_json(tb_hash, chains_key, chains, kind="chains")
 
-    print('-----------------graph 构建-----------------')
+    print("-----------------graph 构建-----------------")
     # 构图时注入同一 LLM 的目的赋值器，确保图中也使用 LLM 赋值结果
     # 构图并缓存（复用上面的 llm 判定逻辑）
-    graph_key = f"grid{200}_mindwell{5}_actskey{abs(hash(acts_key))% (10**8)}"
+    graph_key = f"grid{200}_mindwell{5}_actskey{abs(hash(acts_key)) % (10**8)}"
     G_cached = cm.load_graph(tb_hash, graph_key)
     cfg = GraphConfig(grid_size_m=200, min_dwell_minutes=5, use_activities=True)
     # 先创建一个 MobilityGraph 实例（使用已赋目的的 activities，避免再次调用 LLM）
@@ -222,32 +248,47 @@ def main():
     reflection_cfg = dict(
         max_round=1,
         subAgents=[
-            {"name":"temporal", "prompt":"从 Options 中选择最可能的位置 id（selection），不要输出经纬度。"},
-            {"name":"spatial",  "prompt":"从 Options 中选择最可能的位置 id（selection），不要输出经纬度。"},
+            {
+                "name": "temporal",
+                "prompt": "从 Options 中选择最可能的位置 id（selection），不要输出经纬度。",
+            },
+            {
+                "name": "spatial",
+                "prompt": "从 Options 中选择最可能的位置 id（selection），不要输出经纬度。",
+            },
         ],
         aggregator="confidence_weighted_voting",
     )
     agent = None
     if llm_cfg is not None:
-        agent = build_mrra_agent(llm=llm_cfg, retriever=retriever, reflection=reflection_cfg)
+        agent = build_mrra_agent(
+            llm=llm_cfg, retriever=retriever, reflection=reflection_cfg
+        )
 
     # Build queries around last timestamp
     user_df = tb.for_user(target_user_id)
     last_ts = user_df.iloc[-1]["timestamp_local"].strftime("%Y-%m-%d %H:%M:%S")
     # 演示：以“用餐”目的作为种子做位置检索（若图中存在该目的）
     try:
-        docs = retriever.get_relevant_documents({"user_id": target_user_id, "t": last_ts, "purpose": "用餐", "k": 5})
+        docs = retriever.get_relevant_documents(
+            {"user_id": target_user_id, "t": last_ts, "purpose": "用餐", "k": 5}
+        )
         if docs:
             print("Top locs seeded by purpose=用餐:")
             for d in docs:
-                print(" -", d.metadata.get("node"), f"score={d.metadata.get('score'):.4f}")
+                print(
+                    " -", d.metadata.get("node"), f"score={d.metadata.get('score'):.4f}"
+                )
     except Exception as _:
         pass
     if agent is not None:
         for task, extra in (
             ("next_position", {"t": last_ts}),
             ("future_position", {"t": last_ts}),
-            ("full_day_traj", {"date": user_df.iloc[-1]["timestamp_local"].strftime("%Y-%m-%d")}),
+            (
+                "full_day_traj",
+                {"date": user_df.iloc[-1]["timestamp_local"].strftime("%Y-%m-%d")},
+            ),
         ):
             payload = {"task": task, "user_id": target_user_id}
             payload.update(extra)

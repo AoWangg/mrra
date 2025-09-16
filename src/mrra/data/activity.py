@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, Dict, Any
+from typing import List, Optional, Tuple
 
 import pandas as pd
 
@@ -64,7 +64,9 @@ class ActivityExtractor:
     def _extract_for_user(self, df: pd.DataFrame) -> List[ActivityRecord]:
         if self.method == "grid":
             return self._extract_by_grid(df)
-        points = df[["timestamp_local", "latitude", "longitude"]].to_records(index=False)
+        points = df[["timestamp_local", "latitude", "longitude"]].to_records(
+            index=False
+        )
         cluster_pts: List[Tuple[pd.Timestamp, float, float]] = []
         start_ts: Optional[pd.Timestamp] = None
         end_ts: Optional[pd.Timestamp] = None
@@ -103,8 +105,7 @@ class ActivityExtractor:
             end_ts = None
 
         last_ts: Optional[pd.Timestamp] = None
-        last_lat: Optional[float] = None
-        last_lon: Optional[float] = None
+        # Note: last_lat and last_lon removed as they were unused
         for ts, lat, lon in points:
             if last_ts is not None:
                 gap = (ts - last_ts).total_seconds() / 60.0
@@ -132,8 +133,9 @@ class ActivityExtractor:
                     end_ts = ts
 
             last_ts = ts
-            last_lat = float(lat)
-            last_lon = float(lon)
+            # Note: last_lat and last_lon could be used for future enhancements
+            _ = float(lat)  # last_lat
+            _ = float(lon)  # last_lon
 
         # finalize tail
         _finalize_cluster()
@@ -141,7 +143,10 @@ class ActivityExtractor:
 
     def _extract_by_grid(self, df: pd.DataFrame) -> List[ActivityRecord]:
         # Consecutive points in the same grid cell within gaps form an activity
-        gy_gx = df.apply(lambda r: to_grid(float(r.latitude), float(r.longitude), self.grid_size_m), axis=1)
+        gy_gx = df.apply(
+            lambda r: to_grid(float(r.latitude), float(r.longitude), self.grid_size_m),
+            axis=1,
+        )
         df = df.assign(_gy=[g[0] for g in gy_gx], _gx=[g[1] for g in gy_gx])
         records: List[ActivityRecord] = []
         cur_cell: Tuple[int, int] | None = None
@@ -189,22 +194,22 @@ class ActivityExtractor:
                 cur_cell = cell
                 start_ts = ts
                 end_ts = ts
-                lat_sum = float(row["latitude"]) 
-                lon_sum = float(row["longitude"]) 
+                lat_sum = float(row["latitude"])
+                lon_sum = float(row["longitude"])
                 cnt = 1
             else:
                 if cell == cur_cell:
                     end_ts = ts
-                    lat_sum += float(row["latitude"]) 
-                    lon_sum += float(row["longitude"]) 
+                    lat_sum += float(row["latitude"])
+                    lon_sum += float(row["longitude"])
                     cnt += 1
                 else:
                     _finalize()
                     cur_cell = cell
                     start_ts = ts
                     end_ts = ts
-                    lat_sum = float(row["latitude"]) 
-                    lon_sum = float(row["longitude"]) 
+                    lat_sum = float(row["latitude"])
+                    lon_sum = float(row["longitude"])
                     cnt = 1
             last_ts = ts
 
@@ -219,26 +224,32 @@ class ActivityExtractor:
         dur = r.duration_min
         if dur >= 240 and (start_h >= 22 or start_h <= 6):  # >=4h night stay
             return "home"
-        if dur >= 240 and (dow in (0, 1, 2, 3, 4)) and (9 <= start_h <= 11 or 12 <= end_h <= 19):
+        if (
+            dur >= 240
+            and (dow in (0, 1, 2, 3, 4))
+            and (9 <= start_h <= 11 or 12 <= end_h <= 19)
+        ):
             return "work"
         return "other"
 
     @staticmethod
     def to_dataframe(records: List[ActivityRecord]) -> pd.DataFrame:
-        return pd.DataFrame([
-            {
-                "user_id": r.user_id,
-                "place_id": r.place_id,
-                "latitude": r.latitude,
-                "longitude": r.longitude,
-                "start": r.start,
-                "end": r.end,
-                "duration_min": r.duration_min,
-                "activity_type": r.activity_type,
-                "purpose": r.purpose,
-            }
-            for r in records
-        ])
+        return pd.DataFrame(
+            [
+                {
+                    "user_id": r.user_id,
+                    "place_id": r.place_id,
+                    "latitude": r.latitude,
+                    "longitude": r.longitude,
+                    "start": r.start,
+                    "end": r.end,
+                    "duration_min": r.duration_min,
+                    "activity_type": r.activity_type,
+                    "purpose": r.purpose,
+                }
+                for r in records
+            ]
+        )
 
     @staticmethod
     def from_dataframe(df: pd.DataFrame) -> List[ActivityRecord]:

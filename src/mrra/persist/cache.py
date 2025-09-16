@@ -5,7 +5,7 @@ import json
 import pickle
 import hashlib
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple, List
+from typing import Any, Dict, Optional, List
 
 import pandas as pd
 import networkx as nx
@@ -65,7 +65,9 @@ class CacheManager:
         except Exception:
             return None
 
-    def save_activities(self, tb_hash: str, key: str, records: List[ActivityRecord]) -> str:
+    def save_activities(
+        self, tb_hash: str, key: str, records: List[ActivityRecord]
+    ) -> str:
         path = self.activities_path(tb_hash, key)
         df = ActivityExtractor.to_dataframe(records)
         # 将时间列转为 ISO 字符串
