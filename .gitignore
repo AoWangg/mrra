@@ -1,0 +1,48 @@
+# OS
+.DS_Store
+
+# Python cache/bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env
+.env.*
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+
+# Tool caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.*
+htmlcov/
+.cache/
+
+# Editors/IDE
+.vscode/
+.idea/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Logs
+*.log
+
+# Local data (large or sensitive)
+scripts/Data/
+scripts/**/*.plt
+scripts/*.plt
+docs
+
+# MRRA caches
+.mrra_cache/

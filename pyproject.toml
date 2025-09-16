@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mrra"
+version = "0.1.0"
+description = "Mobility Retrieve-and-Reflect Agent: GraphRAG + Multi-Agent Reflection for mobility trajectories"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "Ao Wang", email = "2331623@tongji.edu.cn"}]
+keywords = ["mobility", "trajectory", "graph", "rag", "agent", "prediction", "langchain", "mcp"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.urls]
+Homepage = "https://www.mrra.tech/"
+Repository = "https://github.com/AoWangg/mrra"
+Issues = "https://github.com/AoWangg/mrra/issues"
+Documentation = "https://www.mrra.tech/"
+dependencies = [
+  "pandas>=2.0",
+  "numpy>=1.24",
+  "networkx>=3.1",
+  "pydantic>=2",
+  "typing-extensions>=4.8",
+  # LangChain split packages; keep core + openai compatible client
+  "langchain-core>=0.2.26",
+  "langchain-openai>=0.2.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "ruff>=0.5.0"]
+mcp = [
+  "langchain-mcp-adapters>=0.1.0",
+  "mcp>=1.0",
+  "httpx-sse>=0.4",
+  "anyio>=4.5",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["mrra*"]
+exclude = []
