@@ -33,7 +33,11 @@ jobs:
         
     - name: Run tests
       run: |
-        pytest --verbose
+        if [ -d "tests" ] || find . -name "test_*.py" -o -name "*_test.py" | grep -q .; then
+          pytest --verbose
+        else
+          echo "No tests found, skipping pytest"
+        fi
         
     - name: Test import
       run: |
