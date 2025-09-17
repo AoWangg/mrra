@@ -7,7 +7,8 @@
   
   *GraphRAG + Multi-Agent Reflection for Intelligent Mobility Analysis*
   
-  [![PyPI version](https://badge.fury.io/py/mrra.svg)](https://badge.fury.io/py/mrra)
+  [![PyPI version](https://img.shields.io/pypi/v/mrra.svg)](https://pypi.org/project/mrra/)
+  [![PyPI downloads](https://img.shields.io/pypi/dm/mrra.svg)](https://pypi.org/project/mrra/)
   [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
   [![CI](https://github.com/AoWangg/mrra/workflows/CI/badge.svg)](https://github.com/AoWangg/mrra/actions)
