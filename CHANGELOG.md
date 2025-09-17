@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2025-09-17
+
+### Added
+- New simplified Geolife verification script (`scripts/verify_geolife_simple.py`)
+  - Demonstrates core MRRA functionality without caching complexity
+  - Streamlined verification of TrajectoryBatch, ActivityExtractor, and MobilityGraph
+  - Clear success/failure reporting with emoji indicators
+  - No dependency on LLM configuration or external services
+
+### Improved
+- Enhanced development experience with minimal setup verification script
+- Better error handling and user feedback in verification process
+
 ## [0.1.2] - 2025-09-17
 
 ### Docs
