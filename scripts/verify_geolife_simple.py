@@ -3,6 +3,7 @@
 Simple Geolife verification script without caching.
 Demonstrates basic MRRA functionality with minimal complexity.
 """
+
 import os
 import logging
 from datetime import datetime
@@ -31,12 +32,14 @@ def load_geolife_plt(path: str, user_id: str) -> pd.DataFrame:
                 dt = datetime.strptime(parts[5] + " " + parts[6], "%Y-%m-%d %H:%M:%S")
             except Exception:
                 continue
-            rows.append({
-                "user_id": user_id,
-                "timestamp": dt.isoformat(),
-                "latitude": lat,
-                "longitude": lon,
-            })
+            rows.append(
+                {
+                    "user_id": user_id,
+                    "timestamp": dt.isoformat(),
+                    "latitude": lat,
+                    "longitude": lon,
+                }
+            )
     return pd.DataFrame(rows)
 
 
@@ -45,7 +48,7 @@ def load_geolife_user(base_dir: str, user_folder: str) -> pd.DataFrame:
     traj_dir = os.path.join(base_dir, user_folder, "Trajectory")
     if not os.path.isdir(traj_dir):
         raise FileNotFoundError(f"Trajectory not found: {traj_dir}")
-    
+
     frames: list[pd.DataFrame] = []
     for fname in sorted(os.listdir(traj_dir)):
         if not fname.lower().endswith(".plt"):
@@ -53,10 +56,10 @@ def load_geolife_user(base_dir: str, user_folder: str) -> pd.DataFrame:
         fpath = os.path.join(traj_dir, fname)
         df = load_geolife_plt(fpath, user_id=f"geolife_{user_folder}")
         frames.append(df)
-    
+
     if not frames:
         raise ValueError(f"No PLT files under {traj_dir}")
-    
+
     out = pd.concat(frames, ignore_index=True)
     return out.sort_values("timestamp").reset_index(drop=True)
 
@@ -77,23 +80,22 @@ def list_geolife_users(base_dir: str) -> list[str]:
 def main():
     """Simple verification of MRRA components with Geolife data."""
     logging.basicConfig(
-        level=logging.INFO, 
-        format="%(levelname)s %(name)s: %(message)s"
+        level=logging.INFO, format="%(levelname)s %(name)s: %(message)s"
     )
-    
+
     # Find Geolife data
     base_dir = os.path.join("scripts", "Data")
     users = list_geolife_users(base_dir)
-    
+
     if not users:
         print(f"❌ No Geolife users found under {base_dir}")
         print(f"Please ensure Geolife dataset is available at {base_dir}")
         return
-    
+
     # Use first available user
     target_user = users[0]
     print(f"📍 Using Geolife user: {target_user}")
-    
+
     # Load trajectory data
     try:
         df = load_geolife_user(base_dir, target_user)
@@ -102,7 +104,7 @@ def main():
     except Exception as e:
         print(f"❌ Failed to load trajectory data: {e}")
         return
-    
+
     # Create TrajectoryBatch
     try:
         tb = TrajectoryBatch(df)
@@ -111,7 +113,7 @@ def main():
     except Exception as e:
         print(f"❌ Failed to create TrajectoryBatch: {e}")
         return
-    
+
     # Extract activities (no caching)
     try:
         ext_cfg = {
@@ -123,44 +125,44 @@ def main():
         extractor = ActivityExtractor(tb, **ext_cfg)
         activities = extractor.extract()
         print(f"✅ Extracted {len(activities)} activities")
-        
+
         # Show sample activities
         if activities:
             print("📋 Sample activities:")
             for i, act in enumerate(activities[:3]):
-                print(f"   {i+1}. {act.activity_type} at place_{act.place_id} "
-                     f"({act.duration_min:.1f} min)")
+                print(
+                    f"   {i + 1}. {act.activity_type} at place_{act.place_id} "
+                    f"({act.duration_min:.1f} min)"
+                )
     except Exception as e:
         print(f"❌ Failed to extract activities: {e}")
         return
-    
+
     # Build mobility graph (no caching)
     try:
-        cfg = GraphConfig(
-            grid_size_m=200,
-            min_dwell_minutes=5,
-            use_activities=True
-        )
+        cfg = GraphConfig(grid_size_m=200, min_dwell_minutes=5, use_activities=True)
         mg = MobilityGraph(tb, cfg, activities=activities)
         G = mg.G
-        
+
         print("✅ Built mobility graph")
         print(f"📊 Graph: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
-        
+
         # Show node type distribution
         type_counts = {}
         for _, d in G.nodes(data=True):
             node_type = d.get("type", "unknown")
             type_counts[node_type] = type_counts.get(node_type, 0) + 1
-        
+
         print("📈 Node types:", type_counts)
-        
+
     except Exception as e:
         print(f"❌ Failed to build mobility graph: {e}")
         return
-    
+
     print("\n🎉 MRRA verification completed successfully!")
-    print("📝 All core components (TrajectoryBatch, ActivityExtractor, MobilityGraph) are working.")
+    print(
+        "📝 All core components (TrajectoryBatch, ActivityExtractor, MobilityGraph) are working."
+    )
 
 
 if __name__ == "__main__":
